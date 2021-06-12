@@ -2,6 +2,7 @@
 
 import math
 import time
+from typing import no_type_check
 import numpy as np
 import os
 
@@ -12,7 +13,14 @@ from gym.utils import seeding
 import copy
 import rospy
 
-from qr_state_reader.srv import ReadEnvironment, ReadEnvironmentRequest
+from qr_state_reader.srv import (
+    ReadEnvironment,
+    ReadEnvironmentRequest,
+    ReadEnvironmentResponse,
+)
+from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
+from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
+from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
 
 # import pybullet as p
 
@@ -114,14 +122,14 @@ class TurtleBotV0Env(gym.Env):
                 -self.width / 2 + self.width * x_rand[i]
             )  # (Tree 1 will be at absolute location: -1.5 + 3*0.1 = -1.2)
             self.y_pos.append(-self.height / 2 + self.height * y_rand[i])
-            self.map[int(self.width * 10 * x_rand[i])][
+            self.map[int(self.width * 10 * x_rand[i])][  # type: ignore (numpy stubs are incomplete)
                 int(self.height * 10 * y_rand[i])
             ] = 1
 
         for i in range(self.n_rocks):  # Instantiate the rocks
             self.x_pos.append(-self.width / 2 + self.width * x_rand[i + self.n_trees])
             self.y_pos.append(-self.height / 2 + self.height * y_rand[i + self.n_trees])
-            self.map[int(self.width * 10 * x_rand[i + self.n_trees])][
+            self.map[int(self.width * 10 * x_rand[i + self.n_trees])][  # type: ignore (numpy stubs are incomplete)
                 int(self.height * 10 * y_rand[i + self.n_trees])
             ] = 2
 
@@ -140,7 +148,7 @@ class TurtleBotV0Env(gym.Env):
             ):
                 self.x_pos.append(self.width / 2 - 0.05)
                 self.y_pos.append(self.height / 2 - 0.05)
-                self.map[int(self.width * 5)][int(self.height * 5)] = 3
+                self.map[int(self.width * 5)][int(self.height * 5)] = 3  # type: ignore (more numpy stuff)
             else:
                 self.x_pos.append(
                     -self.width / 2
@@ -151,7 +159,7 @@ class TurtleBotV0Env(gym.Env):
                     + self.height * y_rand[i + self.n_trees + self.n_rocks]
                 )
                 self.map[
-                    int(self.width * 10 * x_rand[i + self.n_trees + self.n_rocks])
+                    int(self.width * 10 * x_rand[i + self.n_trees + self.n_rocks])  # type: ignore
                 ][int(self.height * 10 * y_rand[i + self.n_trees + self.n_rocks])] = 3
 
         self.inventory = dict(
@@ -190,7 +198,7 @@ class TurtleBotV0Env(gym.Env):
         object_removed = 0
         index_removed = 0
 
-        self.map[int((self.agent_loc[0] + self.width / 2) * 10)][
+        self.map[int((self.agent_loc[0] + self.width / 2) * 10)][ # type: ignore
             int((self.agent_loc[1] + self.height / 2) * 10)
         ] = 0
 
@@ -201,8 +209,8 @@ class TurtleBotV0Env(gym.Env):
             baseOrn += 20 * np.pi / 180
 
         elif action == 2:  # Move forward
-            x_new = basePos[0] + 0.25 * np.cos(baseOrn)
-            y_new = basePos[1] + 0.25 * np.sin(baseOrn)
+            x_new = basePos[0] + 0.25 * np.cos(baseOrn)  # type: ignore
+            y_new = basePos[1] + 0.25 * np.sin(baseOrn)  # type: ignore
             forward = 1
             for i in range(self.n_trees + self.n_rocks + self.n_table):
                 if abs(self.x_pos[i] - x_new) < 0.15:
@@ -310,7 +318,7 @@ class TurtleBotV0Env(gym.Env):
         self.env_step_counter += 1
 
         obs = self.get_observation()
-        self.map[int((self.agent_loc[0] + self.width / 2) * 10)][
+        self.map[int((self.agent_loc[0] + self.width / 2) * 10)][  # type: ignore
             int((self.agent_loc[1] + self.height / 2) * 10)
         ] = 567
         return obs, reward, done, {}
@@ -333,16 +341,15 @@ class TurtleBotV0Env(gym.Env):
             beam_i = np.zeros(num_obj_types)
             for r in np.arange(0, self.sense_range, 0.1):
                 flag = 0
-                x = basePos[0] + r * np.cos(np.deg2rad(current_angle_deg))
-                y = basePos[1] + r * np.sin(np.deg2rad(current_angle_deg))
+                x = basePos[0] + r * np.cos(np.deg2rad(current_angle_deg)) # type: ignore
+                y = basePos[1] + r * np.sin(np.deg2rad(current_angle_deg)) # type: ignore
 
                 for i in range(self.n_trees + self.n_rocks + self.n_table):
                     if x > self.x_low[i] and x < self.x_high[i]:
                         if y > self.y_low[i] and y < self.y_high[i]:
                             flag = 1
-                            sensor_value = float(self.sense_range - r) / float(
-                                self.sense_range
-                            )
+                            sensor_value = \
+                                    float(self.sense_range - r) \ float(self.sense_range) # type: ignore
                             if i < self.n_trees:
                                 obj_type = 1  # Update object as tree
 
@@ -366,7 +373,7 @@ class TurtleBotV0Env(gym.Env):
                     abs(self.width / 2) - abs(x) < 0.05
                     or abs(self.height / 2) - abs(y) < 0.05
                 ):
-                    sensor_value = float(self.sense_range - r) / float(self.sense_range)
+                    sensor_value = float(self.sense_range - r) / float(self.sense_range) # type: ignore
                     index_temp += 1
                     beam_i[0] = sensor_value
                     break
@@ -398,7 +405,7 @@ class TurtleBotV0Env(gym.Env):
         lidar_readings.append(self.inventory["stone"])
         lidar_readings.append(self.inventory["pogo"])
 
-        observations = np.asarray(lidar_readings)
+        observations = np.asarray(lidar_readings) # type: ignore
 
         return observations
 
