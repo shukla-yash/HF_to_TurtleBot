@@ -1,15 +1,10 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 
-import os
-import sys
 import gym
-import time
 import numpy as np
-import TurtleBot_v0
+
 from SimpleDQN import SimpleDQN
-import rospy
-from geometry_msgs.msg import Twist
-from qr_state_reader.srv import ReadEnvironment, ReadEnvironmentRequest
+import TurtleBot_v0
 
 
 def CheckTrainingDoneCallback(reward_array, done_array, env):
