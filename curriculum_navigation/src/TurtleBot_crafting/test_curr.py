@@ -4,13 +4,8 @@ import gym
 import numpy as np
 import TurtleBot_v0
 
-from SimpleDQN import SimpleDQN
-from EnvironmentHandlers import (
-    EnvironmentHandler,
-    RosEnvironmentHandler,
-    StandardEnvironmentHandler,
-    Action,
-)
+from TurtleBot_v0.envs.utils.SimpleDQN import SimpleDQN
+from TurtleBot_v0.envs.utils.EnvironmentHandlers import RosEnvironmentHandler, Action
 
 
 def CheckTrainingDoneCallback(reward_array, done_array, env):

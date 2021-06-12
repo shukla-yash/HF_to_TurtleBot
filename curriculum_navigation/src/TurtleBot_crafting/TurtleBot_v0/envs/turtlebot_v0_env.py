@@ -5,7 +5,14 @@ import numpy as np
 
 import gym
 from gym import spaces
-from EnvironmentHandlers import EnvironmentHandler, RosEnvironmentHandler, StandardEnvironmentHandler
+
+from TurtleBot_v0.envs.utils.EnvironmentHandlers import (
+    EnvironmentHandler,
+    RosEnvironmentHandler,
+    StandardEnvironmentHandler,
+    Action,
+)
+
 
 class TurtleBotV0Env(gym.Env):
     def __init__(
@@ -19,11 +26,11 @@ class TurtleBotV0Env(gym.Env):
         rosnode=True,
     ):
 
-        self.EnvController:EnvironmentHandler
+        self.EnvController: EnvironmentHandler
         if rosnode:
-            self.EnvController:EnvironmentHandler = RosEnvironmentHandler()
+            self.EnvController: EnvironmentHandler = RosEnvironmentHandler()
         else:
-            self.EnvController:EnvironmentHandler = StandardEnvironmentHandler(self)
+            self.EnvController: EnvironmentHandler = StandardEnvironmentHandler(self)
 
         self.width = np.float64(map_width)
         self.height = np.float64(map_height)
@@ -203,15 +210,16 @@ class TurtleBotV0Env(gym.Env):
             beam_i = np.zeros(num_obj_types)
             for r in np.arange(0, self.sense_range, 0.1):
                 flag = 0
-                x = basePos[0] + r * np.cos(np.deg2rad(current_angle_deg)) # type: ignore
-                y = basePos[1] + r * np.sin(np.deg2rad(current_angle_deg)) # type: ignore
+                x = basePos[0] + r * np.cos(np.deg2rad(current_angle_deg))  # type: ignore
+                y = basePos[1] + r * np.sin(np.deg2rad(current_angle_deg))  # type: ignore
 
                 for i in range(self.n_trees + self.n_rocks + self.n_table):
                     if x > self.x_low[i] and x < self.x_high[i]:
                         if y > self.y_low[i] and y < self.y_high[i]:
                             flag = 1
-                            sensor_value = \
-                                    float(self.sense_range - r) / float(self.sense_range) # type: ignore
+                            sensor_value = float(self.sense_range - r) / float(
+                                self.sense_range
+                            )  # type: ignore
                             if i < self.n_trees:
                                 obj_type = 1  # Update object as tree
 
@@ -235,7 +243,7 @@ class TurtleBotV0Env(gym.Env):
                     abs(self.width / 2) - abs(x) < 0.05
                     or abs(self.height / 2) - abs(y) < 0.05
                 ):
-                    sensor_value = float(self.sense_range - r) / float(self.sense_range) # type: ignore
+                    sensor_value = float(self.sense_range - r) / float(self.sense_range)  # type: ignore
                     index_temp += 1
                     beam_i[0] = sensor_value
                     break
@@ -262,7 +270,7 @@ class TurtleBotV0Env(gym.Env):
         lidar_readings.append(self.inventory["stone"])
         lidar_readings.append(self.inventory["pogo"])
 
-        observations = np.asarray(lidar_readings) # type: ignore
+        observations = np.asarray(lidar_readings)  # type: ignore
 
         return observations
 

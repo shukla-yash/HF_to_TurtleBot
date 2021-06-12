@@ -14,7 +14,7 @@ import rospy
 import sys
 
 
-class TurtleBotRosNode:
+class TurtleBotRosNode(object):
     def __init__(self, timeout_seconds=15):
         rospy.init_node("TurtleBotCurriculumNav", anonymous=False)
 
