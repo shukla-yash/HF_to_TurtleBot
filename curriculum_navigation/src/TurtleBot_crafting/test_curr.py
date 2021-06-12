@@ -2,9 +2,15 @@
 
 import gym
 import numpy as np
+import TurtleBot_v0
 
 from SimpleDQN import SimpleDQN
-import TurtleBot_v0
+from EnvironmentHandlers import (
+    EnvironmentHandler,
+    RosEnvironmentHandler,
+    StandardEnvironmentHandler,
+    Action,
+)
 
 
 def CheckTrainingDoneCallback(reward_array, done_array, env):
@@ -144,6 +150,7 @@ def main():
 
         env.reset()
 
+        envhandler: EnvironmentHandler = RosEnvironmentHandler()
         while True:
 
             # get obseration from sensor
@@ -153,17 +160,19 @@ def main():
             a = agent.process_step(obs, True)
             if a == 0:
                 print("Right")
-                GoForward(0)
+                envhandler.goto_relative(Action.CWISE)
             elif a == 1:
                 print("Left")
-                GoForward(1)
+                envhandler.goto_relative(Action.CCWISE)
             elif a == 2:
                 print("Forward")
-                GoForward(2)
+                envhandler.goto_relative(Action.FORWARD)
             elif a == 3:
                 print("Break")
+                envhandler.goto_relative(Action.BREAK)
             elif a == 4:
                 print("Craft")
+                envhandler.goto_relative(Action.CRAFT)
 
             new_obs, reward, done, info = env.step(a)
 
