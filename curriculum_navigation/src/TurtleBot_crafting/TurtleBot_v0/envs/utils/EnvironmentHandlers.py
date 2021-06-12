@@ -9,7 +9,7 @@ from qr_state_reader.srv import (
     ReadEnvironmentRequest,
     ReadEnvironmentResponse,
 )
-from typing import List, Tuple, Union
+from typing import Tuple
 import rospy
 import sys
 
@@ -51,29 +51,38 @@ class TurtleBotRosNode(object):
 
         self.reset_odom()
 
-    def get_position(self):
+    def get_position(self) -> GetPositionResponse:
         try:
-            return self.service_get_position()
+            req = GetPositionRequest()
+            return self.service_get_position(req)
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+            return GetPositionResponse()
+
+    def goto_relative(self, req: GoToRelativeRequest) -> GoToRelativeResponse:
+        resp = GoToRelativeResponse()
+        try:
+            resp = self.service_goto_position(req)
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed:" + str(e))
 
-    def goto_relative(self, req: GoToRelativeRequest):
+        return resp
+
+    def reset_odom(self) -> ResetOdomResponse:
         try:
-            self.service_goto_position(req)
+            req = ResetOdomRequest()
+            self.service_reset_odom(req)
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed:" + str(e))
 
-    def reset_odom(self):
-        try:
-            self.service_reset_odom()
-        except rospy.ServiceException as e:
-            rospy.logerr("Service call failed:" + str(e))
+        return ResetOdomResponse()
 
-    def read_environment(self):
+    def read_environment(self) -> ReadEnvironmentResponse:
         try:
             return self.service_read_env()
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed:" + str(e))
+            return ReadEnvironmentResponse()
 
 
 class Action(Enum):
@@ -94,6 +103,26 @@ class Reading(Enum):
     ROCK2 = 5
     NONE = 6
     CRAFTING_TABLE = 7
+
+
+@staticmethod
+def msgToReading(msg: ReadEnvironmentResponse) -> Reading:
+    if msg.reading == msg.TREE1:
+        return Reading.TREE1
+    if msg.reading == msg.TREE2:
+        return Reading.TREE2
+    if msg.reading == msg.TREE3:
+        return Reading.TREE3
+    if msg.reading == msg.TREE4:
+        return Reading.TREE4
+    if msg.reading == msg.ROCK1:
+        return Reading.ROCK1
+    if msg.reading == msg.ROCK2:
+        return Reading.ROCK2
+    if msg.reading == msg.CRAFTING_TABLE:
+        return Reading.CRAFTING_TABLE
+
+    return Reading.NONE
 
 
 class Position:
@@ -160,10 +189,12 @@ class RosEnvironmentHandler(EnvironmentHandler):
         return (0.0, done)
 
     def get_position(self) -> Position:
-        return Position(0, 0, 0)
+        result = self.node.get_position()
+        return Position(result.point.x, result.point.y, result.degrees)
 
     def get_reading(self) -> Reading:
-        return Reading.NONE
+        result = self.node.read_environment()
+        return msgToReading(result)
 
 
 class StandardEnvironmentHandler(EnvironmentHandler):
