@@ -130,6 +130,8 @@ class RosEnvironmentHandler(EnvironmentHandler):
     def take_action(
         self, action: Action
     ) -> Tuple[float, bool]:  # returning reward, done
+
+        done = False
         req = GoToRelativeRequest()
         if action == Action.FORWARD:
             req.movement = req.FORWARD
@@ -145,11 +147,17 @@ class RosEnvironmentHandler(EnvironmentHandler):
 
         if action == Action.BREAK:
             reading = self.get_reading()
+            time.sleep(3)
 
         if action == Action.CRAFT:
             reading = self.get_reading()
+            time.sleep(3)
+            done = True
 
-        return 0.0
+        req.movement = req.STOP
+        self.node.goto_relative(req)
+
+        return (0.0, done)
 
     def get_position(self) -> Position:
         return Position(0, 0, 0)

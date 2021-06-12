@@ -145,7 +145,7 @@ def main():
 
         env.reset()
 
-        envhandler: EnvironmentHandler = RosEnvironmentHandler()
+        envhandler = RosEnvironmentHandler()
         while True:
 
             # get obseration from sensor
@@ -155,19 +155,19 @@ def main():
             a = agent.process_step(obs, True)
             if a == 0:
                 print("Right")
-                envhandler.goto_relative(Action.CWISE)
+                envhandler.take_action(Action.CWISE)
             elif a == 1:
                 print("Left")
-                envhandler.goto_relative(Action.CCWISE)
+                envhandler.take_action(Action.CCWISE)
             elif a == 2:
                 print("Forward")
-                envhandler.goto_relative(Action.FORWARD)
+                envhandler.take_action(Action.FORWARD)
             elif a == 3:
                 print("Break")
-                envhandler.goto_relative(Action.BREAK)
+                envhandler.take_action(Action.BREAK)
             elif a == 4:
                 print("Craft")
-                envhandler.goto_relative(Action.CRAFT)
+                envhandler.take_action(Action.CRAFT)
 
             new_obs, reward, done, info = env.step(a)
 
