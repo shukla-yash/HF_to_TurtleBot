@@ -159,9 +159,8 @@ class TurtleBotV0Env(gym.Env):
         # action if statement from here
         reward, done = self.EnvController.take_action(action=action)
         pos = self.EnvController.get_position()
-
-        self.agent_loc = [pos.x, pos.y]
-        self.agent_orn = pos.deg
+        self.agent_loc = [float(pos.x), float(pos.y)]
+        self.agent_orn = float(pos.deg)
 
         if self.goal_env == 0:
             x = pos.x

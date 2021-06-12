@@ -190,7 +190,7 @@ class RosEnvironmentHandler(EnvironmentHandler):
 
     def get_position(self) -> Position:
         result = self.node.get_position()
-        return Position(result.point.x, result.point.y, result.degrees)
+        return Position(result.point.x, result.point.y, result.degrees.data)
 
     def get_reading(self) -> Reading:
         result = self.node.read_environment()
