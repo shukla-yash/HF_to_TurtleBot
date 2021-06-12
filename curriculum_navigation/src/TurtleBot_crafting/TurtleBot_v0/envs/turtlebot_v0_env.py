@@ -1,26 +1,16 @@
 #!/usr/bin/env python3.7
 
-import math
-import time
-from typing import no_type_check
-import numpy as np
-import os
-
-# import matplotlib.pyplot as plt
-import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
 import copy
+import time
 import rospy
+import numpy as np
 
-from qr_state_reader.srv import (
-    ReadEnvironment,
-    ReadEnvironmentRequest,
-    ReadEnvironmentResponse,
-)
+import gym
+from gym import spaces
 from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
 from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
 from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
+from qr_state_reader.srv import ReadEnvironment, ReadEnvironmentRequest, ReadEnvironmentResponse
 
 # import pybullet as p
 
