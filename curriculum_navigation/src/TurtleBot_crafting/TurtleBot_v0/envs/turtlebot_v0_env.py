@@ -1,8 +1,10 @@
 #!/usr/bin/env python3.7
 
+import abc
 import copy
+from enum import Enum
 import time
-from typing import Callable
+from typing import List, Tuple, Union
 import rospy
 import sys
 import numpy as np
@@ -40,6 +42,8 @@ class TurtleBotRosNode:
             rospy.logerr('Tried accessing the qr_state_reader service but failed. Exiting.')
             sys.exit(1)
 
+        self.reset_odom()
+
     def get_position(self):
         try:
             return self.service_get_position()
@@ -65,6 +69,203 @@ class TurtleBotRosNode:
             rospy.logerr("Service call failed:" + str(e))
 
 
+class Action(Enum):
+    STOP=0
+    FORWARD=1
+    CWISE=2
+    CCWISE=3
+    BREAK=4
+    CRAFT=5
+
+
+class Reading(Enum):
+    TREE1=0
+    TREE2=1
+    TREE3=2
+    TREE4=3
+    ROCK1=4
+    ROCK2=5
+    NONE=6
+    CRAFTING_TABLE=7
+
+
+class Position:
+    def __init__(self, x, y, deg):
+        self.x   = x
+        self.y   = y
+        self.deg = deg
+
+
+class EnvironmentHandler(abc.ABC):
+    @abc.abstractmethod
+    def __init__(self):
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def take_action(self, action:Action) -> Tuple[float, bool]:  # returning reward, done
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_position(self) -> Position:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_reading(self) -> Reading:
+        raise NotImplementedError
+
+
+class RosEnvironmentHandler(EnvironmentHandler):
+    def __init__(self):
+        self.node = TurtleBotRosNode()
+
+    def take_action(self, action:Action) -> Tuple[float, bool]:  # returning reward, done
+        req = GoToRelativeRequest()
+        if action == Action.FORWARD:
+            req.movement = req.FORWARD
+            self.node.goto_relative(req)
+
+        if action == Action.CWISE:
+            req.movement = req.CWISE
+            self.node.goto_relative(req)
+
+        if action == Action.CCWISE:
+            req.movement = req.CCWISE
+            self.node.goto_relative(req)
+
+        if action == Action.BREAK:
+            reading = self.get_reading()
+
+        if action == Action.CRAFT:
+            reading = self.get_reading()
+
+        return 0.0
+
+    def get_position(self) -> Position:
+        return Position(0,0,0)
+
+    def get_reading(self) -> Reading:
+        return Reading.NONE
+
+
+class StandardEnvironmentHandler(EnvironmentHandler):
+    def __init__(self, calling_super):
+        self.calling_super = calling_super
+        self.agent_loc = None
+        self.agent_orn = None
+
+    def take_action(self, action:Action):
+        basePos = copy.deepcopy(self.calling_super.agent_loc)
+        baseOrn = copy.deepcopy(self.calling_super.agent_orn)
+
+        reward = self.calling_super.reward_step
+        done = False
+
+        forward = 0
+        object_removed = 0
+        index_removed = 0
+
+        self.calling_super.map[int((self.calling_super.agent_loc[0] + self.calling_super.width / 2) * 10)][ # type: ignore
+            int((self.calling_super.agent_loc[1] + self.calling_super.height / 2) * 10)
+        ] = 0
+
+        if action == 0:  # Turn right
+            baseOrn -= 20 * np.pi / 180
+
+        elif action == 1:  # Turn left
+            baseOrn += 20 * np.pi / 180
+
+        elif action == 2:  # Move forward
+            x_new = basePos[0] + 0.25 * np.cos(baseOrn)  # type: ignore
+            y_new = basePos[1] + 0.25 * np.sin(baseOrn)  # type: ignore
+            forward = 1
+            for i in range(self.calling_super.n_trees + self.calling_super.n_rocks + self.calling_super.n_table):
+                if abs(self.calling_super.x_pos[i] - x_new) < 0.15:
+                    if abs(self.calling_super.y_pos[i] - y_new) < 0.15:
+                        forward = 0
+
+            if (abs(abs(x_new) - abs(self.calling_super.width / 2)) < 0.25) or (
+                abs(abs(y_new) - abs(self.calling_super.height / 2)) < 0.25
+            ):
+                reward = self.calling_super.reward_hit_wall
+                forward = 0
+
+            if forward == 1:
+                basePos[0] = x_new
+                basePos[1] = y_new
+
+        elif action == 3:  # Break
+            x = basePos[0]
+            y = basePos[1]
+            index_removed = self.get_reading().value
+            if index_removed >= 0 and index_removed < 4:
+                object_removed = 1
+                print("Index Removed: ", index_removed)
+                time.sleep(5.0)
+                self.calling_super.inventory["wood"] += 1
+                if self.calling_super.inventory["wood"] <= 2:
+                    reward = self.calling_super.reward_break
+            if index_removed > 3 and index_removed < 6:
+                object_removed = 2
+                self.calling_super.rocks_broken.append(index_removed)
+                print("Index Removed: ", index_removed)
+                time.sleep(5.0)
+                self.calling_super.inventory["stone"] += 1
+                if self.calling_super.inventory["stone"] <= 1:
+                    reward = self.calling_super.reward_break
+
+            if object_removed == 1:
+                flag = 0
+                for i in range(len(self.calling_super.trees_broken)):
+                    if index_removed > self.calling_super.trees_broken[i]:
+                        flag += 1
+                self.calling_super.x_pos.pop(index_removed - flag)
+                self.calling_super.y_pos.pop(index_removed - flag)
+                self.calling_super.x_low.pop(index_removed - flag)
+                self.calling_super.x_high.pop(index_removed - flag)
+                self.calling_super.y_low.pop(index_removed - flag)
+                self.calling_super.y_high.pop(index_removed - flag)
+                self.calling_super.n_trees -= 1
+                self.calling_super.trees_broken.append(index_removed)
+                print("Object Broken:", object_removed)
+                print("Index Broken:", index_removed)
+
+            if object_removed == 2:
+                flag = 0
+                for i in range(len(self.calling_super.rocks_broken)):
+                    if index_removed > self.calling_super.rocks_broken[i]:
+                        flag += 1
+                flag += len(self.calling_super.trees_broken)
+                self.calling_super.x_pos.pop(index_removed - flag)
+                self.calling_super.y_pos.pop(index_removed - flag)
+                self.calling_super.x_low.pop(index_removed - flag)
+                self.calling_super.x_high.pop(index_removed - flag)
+                self.calling_super.y_low.pop(index_removed - flag)
+                self.calling_super.y_high.pop(index_removed - flag)
+                self.calling_super.n_rocks -= 1
+                print("Object Broken:", object_removed)
+                print("Index Broken:", index_removed)
+
+        elif action == 4:  # Craft
+            x = basePos[0]
+            y = basePos[1]
+            index_removed = self.get_reading().value
+            if index_removed == 7:
+                if self.calling_super.inventory["wood"] >= 2 and self.calling_super.inventory["stone"] >= 1:
+                    self.calling_super.inventory["pogo"] += 1
+                    self.calling_super.inventory["wood"] -= 2
+                    self.calling_super.inventory["stone"] -= 1
+                    done = True
+                    reward = self.calling_super.reward_done
+
+        return reward, done
+
+    def get_position(self) -> Position:
+        return Position(self.agent_loc[0], self.agent_loc[1], self.agent_orn)
+
+    def get_reading(self) -> Reading:
+        return Reading.NONE
+
+
 class TurtleBotV0Env(gym.Env):
     def __init__(
         self,
@@ -74,16 +275,19 @@ class TurtleBotV0Env(gym.Env):
         initial_inventory=None,
         goal_env=None,
         is_final=False,
+        rosnode=True,
     ):
+
+        self.EnvController:EnvironmentHandler
+        if rosnode:
+            self.EnvController:EnvironmentHandler = RosEnvironmentHandler()
+        else:
+            self.EnvController:EnvironmentHandler = StandardEnvironmentHandler(self)
 
         self.width = np.float64(map_width)
         self.height = np.float64(map_height)
-        self.object_types = [
-            0,
-            1,
-            2,
-            3,
-        ]  # we have 4 objects: wall, tree, rock, and craft table
+        # we have 4 objects: wall, tree, rock, and craft table
+        self.object_types = [0, 1, 2, 3]
 
         self.reward_step = -1
         self.reward_done = 1000
@@ -204,115 +408,16 @@ class TurtleBotV0Env(gym.Env):
         return obs
 
     def step(self, action):
-        basePos = copy.deepcopy(self.agent_loc)
-        baseOrn = copy.deepcopy(self.agent_orn)
+        # action if statement from here
+        reward, done = self.EnvController.take_action(action=action)
+        pos = self.EnvController.get_position()
 
-        reward = self.reward_step
-        done = False
-
-        forward = 0
-        object_removed = 0
-        index_removed = 0
-
-        self.map[int((self.agent_loc[0] + self.width / 2) * 10)][ # type: ignore
-            int((self.agent_loc[1] + self.height / 2) * 10)
-        ] = 0
-
-        if action == 0:  # Turn right
-            baseOrn -= 20 * np.pi / 180
-
-        elif action == 1:  # Turn left
-            baseOrn += 20 * np.pi / 180
-
-        elif action == 2:  # Move forward
-            x_new = basePos[0] + 0.25 * np.cos(baseOrn)  # type: ignore
-            y_new = basePos[1] + 0.25 * np.sin(baseOrn)  # type: ignore
-            forward = 1
-            for i in range(self.n_trees + self.n_rocks + self.n_table):
-                if abs(self.x_pos[i] - x_new) < 0.15:
-                    if abs(self.y_pos[i] - y_new) < 0.15:
-                        forward = 0
-
-            if (abs(abs(x_new) - abs(self.width / 2)) < 0.25) or (
-                abs(abs(y_new) - abs(self.height / 2)) < 0.25
-            ):
-                reward = self.reward_hit_wall
-                forward = 0
-
-            if forward == 1:
-                basePos[0] = x_new
-                basePos[1] = y_new
-
-        elif action == 3:  # Break
-            x = basePos[0]
-            y = basePos[1]
-            index_removed = self.qr_reading_callback()
-            if index_removed >= 0 and index_removed < 4:
-                object_removed = 1
-                print("Index Removed: ", index_removed)
-                time.sleep(5.0)
-                self.inventory["wood"] += 1
-                if self.inventory["wood"] <= 2:
-                    reward = self.reward_break
-            if index_removed > 3 and index_removed < 6:
-                object_removed = 2
-                self.rocks_broken.append(index_removed)
-                print("Index Removed: ", index_removed)
-                time.sleep(5.0)
-                self.inventory["stone"] += 1
-                if self.inventory["stone"] <= 1:
-                    reward = self.reward_break
-
-            if object_removed == 1:
-                flag = 0
-                for i in range(len(self.trees_broken)):
-                    if index_removed > self.trees_broken[i]:
-                        flag += 1
-                self.x_pos.pop(index_removed - flag)
-                self.y_pos.pop(index_removed - flag)
-                self.x_low.pop(index_removed - flag)
-                self.x_high.pop(index_removed - flag)
-                self.y_low.pop(index_removed - flag)
-                self.y_high.pop(index_removed - flag)
-                self.n_trees -= 1
-                self.trees_broken.append(index_removed)
-                print("Object Broken:", object_removed)
-                print("Index Broken:", index_removed)
-
-            if object_removed == 2:
-                flag = 0
-                for i in range(len(self.rocks_broken)):
-                    if index_removed > self.rocks_broken[i]:
-                        flag += 1
-                flag += len(self.trees_broken)
-                self.x_pos.pop(index_removed - flag)
-                self.y_pos.pop(index_removed - flag)
-                self.x_low.pop(index_removed - flag)
-                self.x_high.pop(index_removed - flag)
-                self.y_low.pop(index_removed - flag)
-                self.y_high.pop(index_removed - flag)
-                self.n_rocks -= 1
-                print("Object Broken:", object_removed)
-                print("Index Broken:", index_removed)
-
-        elif action == 4:  # Craft
-            x = basePos[0]
-            y = basePos[1]
-            index_removed = self.qr_reading_callback()
-            if index_removed == 7:
-                if self.inventory["wood"] >= 2 and self.inventory["stone"] >= 1:
-                    self.inventory["pogo"] += 1
-                    self.inventory["wood"] -= 2
-                    self.inventory["stone"] -= 1
-                    done = True
-                    reward = self.reward_done
-
-        self.agent_loc = basePos
-        self.agent_orn = baseOrn
+        self.agent_loc = [pos.x, pos.y]
+        self.agent_orn = pos.deg
 
         if self.goal_env == 0:
-            x = basePos[0]
-            y = basePos[1]
+            x = pos.x
+            y = pos.y
             for i in range(self.n_trees_org + self.n_rocks_org + self.n_table):
                 if abs(self.x_pos_copy[i] - x) < 0.3:
                     if abs(self.y_pos_copy[i] - y) < 0.3:
