@@ -143,7 +143,6 @@ class SimpleDQN(object):
     # input: current state/observation
     # output: action index
     def process_step(self, x, exploring):
-
         # feed input through network and get output action distribution and hidden layer
         aprob, h = self.policy_forward(x)
 
@@ -186,7 +185,6 @@ class SimpleDQN(object):
 
     # after process_step, this function needs to be called to set the reward
     def give_reward(self, reward):
-
         # store the reward in the list of rewards
         self._drs.append(reward)
 
@@ -272,7 +270,6 @@ class SimpleDQN(object):
             self._grad_buffer[k] = np.zeros_like(v)  # reset batch gradient buffer
 
     def save_model(self, curriculum_no, beam_no, env_no):
-
         experiment_file_name = (
             "_c" + str(curriculum_no) + "_b" + str(beam_no) + "_e" + str(env_no)
         )
@@ -283,12 +280,13 @@ class SimpleDQN(object):
         print("saved to: ", path_to_save)
 
     def load_model(self, curriculum_no, beam_no, env_no):
-
         experiment_file_name = (
             "_c" + str(curriculum_no) + "_b" + str(beam_no) + "_e" + str(env_no)
         )
+
         path_to_load = (
-            "/media/yash/SSHD/Robotics/curriculum_transfer/TurtleBot_interaction/turtlebot_ws/src/turtlebot_navigation/src/TurtleBot_crafting/"
+            ""
+            + os.path.dirname(os.path.abspath(__file__))
             + os.sep
             + self.log_dir
             + os.sep
