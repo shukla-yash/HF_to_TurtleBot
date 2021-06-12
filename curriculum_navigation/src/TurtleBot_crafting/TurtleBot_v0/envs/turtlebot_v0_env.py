@@ -12,17 +12,6 @@ from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeRe
 from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
 from qr_state_reader.srv import ReadEnvironment, ReadEnvironmentRequest, ReadEnvironmentResponse
 
-# import pybullet as p
-
-# REWARD_STEP = -1
-# REWARD_DONE = 5000
-# REWARD_BREAK = 300
-# angle_increment = np.pi/60
-# half_beams = 60
-# number_of_episodes = 50000
-# time_per_episode = 600
-
-
 class TurtleBotV0Env(gym.Env):
     def __init__(
         self,
@@ -34,7 +23,6 @@ class TurtleBotV0Env(gym.Env):
         goal_env=None,
         is_final=False,
     ):
-        # super(TurtleBotV0Env, self).__init__()
 
         self.width = np.float64(map_width)
         self.height = np.float64(map_height)
@@ -64,8 +52,7 @@ class TurtleBotV0Env(gym.Env):
 
         low = np.zeros(self.half_beams * 2 * len(self.object_types) + 3)
         high = np.ones(self.half_beams * 2 * len(self.object_types) + 3)
-        # inventory_array = np.array([5,2])
-        # high = np.append(high_array, inventory_array)
+
         self.observation_space = spaces.Box(low, high, dtype=float)
         self.action_space = spaces.Discrete(5)
         self.num_envs = 1
@@ -79,8 +66,6 @@ class TurtleBotV0Env(gym.Env):
         self.goal_env = goal_env
 
     def reset(self):
-
-        # print("reset called: ", self.reset_time)
         self.reset_time += 1
 
         self.env_step_counter = 0
@@ -93,30 +78,28 @@ class TurtleBotV0Env(gym.Env):
         self.n_trees = self.n_trees_org
         self.n_rocks = self.n_rocks_org
         self.n_table = self.n_crafting_table
-        # x_rand = np.random.rand(self.n_trees + self.n_rocks + self.n_table, 1)
-        # y_rand = np.random.rand(self.n_trees + self.n_rocks + self.n_table, 1)
 
-        #
-        x_rand = np.array(
-            [0.1, 0.2, 0.3, 0.7, 0.8, 0.9, 0.48]
-        )  # First 4 are for trees, next 2 for rocks and the last for crafting table
+        # First 4 are for trees, next 2 for rocks and the last for crafting table
+        x_rand = np.array([0.1, 0.2, 0.3, 0.7, 0.8, 0.9, 0.48])
         y_rand = np.array([0.3, 0.1, 0.62, 0.41, 0.9, 0.25, 0.1])
+
         self.x_pos = []
         self.y_pos = []
         self.map = np.zeros((int(self.width * 10), int(self.height * 10)))
         self.rocks_broken = []
         self.trees_broken = []
 
-        for i in range(self.n_trees):  # Instantiate the trees
-            self.x_pos.append(
-                -self.width / 2 + self.width * x_rand[i]
-            )  # (Tree 1 will be at absolute location: -1.5 + 3*0.1 = -1.2)
+        # Instantiate the trees
+        for i in range(self.n_trees):
+            # (Tree 1 will be at absolute location: -1.5 + 3*0.1 = -1.2)
+            self.x_pos.append(-self.width / 2 + self.width * x_rand[i])
             self.y_pos.append(-self.height / 2 + self.height * y_rand[i])
             self.map[int(self.width * 10 * x_rand[i])][  # type: ignore (numpy stubs are incomplete)
                 int(self.height * 10 * y_rand[i])
             ] = 1
 
-        for i in range(self.n_rocks):  # Instantiate the rocks
+        # Instantiate the rocks
+        for i in range(self.n_rocks):
             self.x_pos.append(-self.width / 2 + self.width * x_rand[i + self.n_trees])
             self.y_pos.append(-self.height / 2 + self.height * y_rand[i + self.n_trees])
             self.map[int(self.width * 10 * x_rand[i + self.n_trees])][  # type: ignore (numpy stubs are incomplete)
@@ -373,11 +356,6 @@ class TurtleBotV0Env(gym.Env):
 
             current_angle += self.angle_increment
             angle_temp += 1
-
-            # Commented for degree
-            # if current_angle >= 2*np.pi + base:
-            #     break
-
             current_angle_deg += self.angle_increment_deg
 
             if current_angle_deg >= 343 + rot_degree:
