@@ -9,7 +9,7 @@ import TurtleBot_v0
 from SimpleDQN import SimpleDQN
 import rospy
 from geometry_msgs.msg import Twist
-from movement_utils.srv import *
+from qr_state_reader.srv import ReadEnvironment, ReadEnvironmentRequest
 
 
 def CheckTrainingDoneCallback(reward_array, done_array, env):
@@ -34,44 +34,6 @@ def CheckTrainingDoneCallback(reward_array, done_array, env):
             return 0
     else:
         return 0
-
-
-class GoForward:
-    def __init__(self, action):
-        # initiliaze
-        rospy.init_node("GoForward", anonymous=False)
-
-        # What function to call when you ctrl + c
-        rospy.on_shutdown(self.shutdown)
-
-        # Create a publisher which can "talk" to TurtleBot and tell it to move
-        # Tip: You may need to change cmd_vel_mux/input/navi to /cmd_vel if you're not using TurtleBot2
-        self.cmd_vel = rospy.Publisher("cmd_vel_mux/input/navi", Twist, queue_size=10)
-
-        # TurtleBot will stop if we don't keep telling it to move.  How often should we tell it to move? 10 HZ
-        r = rospy.Rate(10)
-
-        # Twist is a datatype for velocity
-        move_cmd = Twist()
-        if action == 2:
-            move_cmd.linear.x = 0.2
-            move_cmd.angular.z = 0
-        elif action == 1:
-            move_cmd.linear.x = 0
-            move_cmd.angular.z = -0.35
-        elif action == 0:
-            move_cmd.linear.x = 0
-            move_cmd.angular.z = 0.35
-
-        for j in range(1):
-            for i in range(10):
-                self.cmd_vel.publish(move_cmd)
-                r.sleep()
-
-    def shutdown(self):
-        # stop turtlebot
-        rospy.loginfo("Stop TurtleBot")
-        self.cmd_vel.publish(Twist())
 
 
 def main():

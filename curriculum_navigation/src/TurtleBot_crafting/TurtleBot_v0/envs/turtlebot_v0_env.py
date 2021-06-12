@@ -10,8 +10,9 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 import copy
-from qr_state_reader.srv import *
 import rospy
+
+from qr_state_reader.srv import ReadEnvironment, ReadEnvironmentRequest
 
 # import pybullet as p
 
@@ -27,8 +28,8 @@ import rospy
 class TurtleBotV0Env(gym.Env):
     def __init__(
         self,
-        map_width=None,
-        map_height=None,
+        map_width=0,
+        map_height=0,
         items_id=None,
         items_quantity=None,
         initial_inventory=None,
@@ -37,8 +38,8 @@ class TurtleBotV0Env(gym.Env):
     ):
         # super(TurtleBotV0Env, self).__init__()
 
-        self.width = map_width
-        self.height = map_height
+        self.width = np.float64(map_width)
+        self.height = np.float64(map_height)
         self.object_types = [
             0,
             1,
@@ -85,8 +86,6 @@ class TurtleBotV0Env(gym.Env):
         self.reset_time += 1
 
         self.env_step_counter = 0
-        offset = [0, 0, 0]
-
         self.agent_loc = [0, 0]
         self.agent_orn = np.pi / 2
 
