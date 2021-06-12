@@ -470,7 +470,7 @@ class TurtleBotV0Env(gym.Env):
                         if y > self.y_low[i] and y < self.y_high[i]:
                             flag = 1
                             sensor_value = \
-                                    float(self.sense_range - r) \ float(self.sense_range) # type: ignore
+                                    float(self.sense_range - r) / float(self.sense_range) # type: ignore
                             if i < self.n_trees:
                                 obj_type = 1  # Update object as tree
 
