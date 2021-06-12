@@ -2,22 +2,74 @@
 
 import copy
 import time
+from typing import Callable
 import rospy
+import sys
 import numpy as np
 
 import gym
 from gym import spaces
-from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
-from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
-from movement_utils.srv import ResetOdom, ResetOdomRequest, ResetOdomResponse
-from qr_state_reader.srv import ReadEnvironment, ReadEnvironmentRequest, ReadEnvironmentResponse
+from movement_utils.srv  import GetPosition     , GetPositionRequest     , GetPositionResponse
+from movement_utils.srv  import GoToRelative    , GoToRelativeRequest    , GoToRelativeResponse
+from movement_utils.srv  import ResetOdom       , ResetOdomRequest       , ResetOdomResponse
+from qr_state_reader.srv import ReadEnvironment , ReadEnvironmentRequest , ReadEnvironmentResponse
+
+
+class TurtleBotRosNode:
+    def __init__(self, timeout_seconds=15):
+        rospy.init_node('TurtleBotCurriculumNav', anonymous=False)
+
+        srv_str_get_position  = '/movement_wrapper/get_position'
+        srv_str_goto_relative = '/movement_wrapper/goto_relative'
+        srv_str_reset_odom    = '/movement_wrapper/reset_odom'
+        srv_str_read_env      = '/qr_state_reader/read_environment'
+
+        try:
+            rospy.wait_for_service(srv_str_get_position, timeout=timeout_seconds)
+            self.service_get_position  = rospy.ServiceProxy(srv_str_get_position,  GetPosition)
+            self.service_goto_position = rospy.ServiceProxy(srv_str_goto_relative, GoToRelative)
+            self.service_reset_odom    = rospy.ServiceProxy(srv_str_reset_odom,    ResetOdom)
+        except rospy.ROSException:
+            rospy.logerr('Tried accessing a movement_wrapper service but failed. Exiting.')
+            sys.exit(1)
+
+        try:
+            rospy.wait_for_service(srv_str_read_env, timeout=timeout_seconds)
+            self.service_read_env = rospy.ServiceProxy(srv_str_read_env, ReadEnvironment)
+        except rospy.ROSException:
+            rospy.logerr('Tried accessing the qr_state_reader service but failed. Exiting.')
+            sys.exit(1)
+
+    def get_position(self):
+        try:
+            return self.service_get_position()
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+
+    def goto_relative(self, req:GoToRelativeRequest):
+        try:
+            self.service_goto_position(req)
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+
+    def reset_odom(self):
+        try:
+            self.service_reset_odom()
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+
+    def read_environment(self):
+        try:
+            return self.service_read_env()
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+
 
 class TurtleBotV0Env(gym.Env):
     def __init__(
         self,
         map_width=0,
         map_height=0,
-        items_id=None,
         items_quantity=None,
         initial_inventory=None,
         goal_env=None,
@@ -150,15 +202,6 @@ class TurtleBotV0Env(gym.Env):
         print("Y Pos: ", self.y_pos)
 
         return obs
-
-    def qr_reading_callback(self):
-        rospy.wait_for_service("read_environment")
-        try:
-            read_env_func = rospy.ServiceProxy("read_environment", ReadEnvironment)
-            resp1 = read_env_func()
-            return resp1.reading
-        except rospy.ServiceException as e:
-            print("Service call failed: %s" % e)
 
     def step(self, action):
         basePos = copy.deepcopy(self.agent_loc)
