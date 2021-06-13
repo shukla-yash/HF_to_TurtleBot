@@ -1,5 +1,7 @@
 import abc
 import time
+import copy
+import numpy as np
 from enum import Enum
 from movement_utils.srv import GetPosition, GetPositionRequest, GetPositionResponse
 from movement_utils.srv import GoToRelative, GoToRelativeRequest, GoToRelativeResponse
@@ -51,6 +53,12 @@ class TurtleBotRosNode(object):
 
         self.reset_odom()
 
+    def __del__(self):
+        self.service_get_position
+        self.service_goto_position
+        self.service_reset_odom
+        self.service_read_env
+
     def get_position(self) -> GetPositionResponse:
         try:
             req = GetPositionRequest()
@@ -79,7 +87,8 @@ class TurtleBotRosNode(object):
 
     def read_environment(self) -> ReadEnvironmentResponse:
         try:
-            return self.service_read_env()
+            req = ReadEnvironmentRequest()
+            return self.service_read_env(req)
         except rospy.ServiceException as e:
             rospy.logerr("Service call failed:" + str(e))
             return ReadEnvironmentResponse()
@@ -105,7 +114,6 @@ class Reading(Enum):
     CRAFTING_TABLE = 7
 
 
-@staticmethod
 def msgToReading(msg: ReadEnvironmentResponse) -> Reading:
     if msg.reading == msg.TREE1:
         return Reading.TREE1
@@ -135,20 +143,25 @@ class Position:
 class EnvironmentHandler(abc.ABC):
     @abc.abstractmethod
     def __init__(self):
+        self
         raise NotImplementedError
 
     @abc.abstractmethod
     def take_action(
         self, action: Action
     ) -> Tuple[float, bool]:  # returning reward, done
+        self
+        del action
         raise NotImplementedError
 
     @abc.abstractmethod
     def get_position(self) -> Position:
+        self
         raise NotImplementedError
 
     @abc.abstractmethod
     def get_reading(self) -> Reading:
+        self
         raise NotImplementedError
 
 
@@ -248,8 +261,8 @@ class StandardEnvironmentHandler(EnvironmentHandler):
                 basePos[1] = y_new
 
         elif action == 3:  # Break
-            x = basePos[0]
-            y = basePos[1]
+            self.x = basePos[0]
+            self.y = basePos[1]
             index_removed = self.get_reading().value
             if index_removed >= 0 and index_removed < 4:
                 object_removed = 1
@@ -300,8 +313,8 @@ class StandardEnvironmentHandler(EnvironmentHandler):
                 print("Index Broken:", index_removed)
 
         elif action == 4:  # Craft
-            x = basePos[0]
-            y = basePos[1]
+            self.x = basePos[0]
+            self.y = basePos[1]
             index_removed = self.get_reading().value
             if index_removed == 7:
                 if (
@@ -320,4 +333,5 @@ class StandardEnvironmentHandler(EnvironmentHandler):
         return Position(self.agent_loc[0], self.agent_loc[1], self.agent_orn)
 
     def get_reading(self) -> Reading:
+        self
         return Reading.NONE
