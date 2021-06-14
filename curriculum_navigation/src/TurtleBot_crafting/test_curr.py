@@ -7,6 +7,8 @@ import TurtleBot_v0
 from TurtleBot_v0.envs.utils.SimpleDQN import SimpleDQN
 from TurtleBot_v0.envs.utils.EnvironmentHandlers import RosEnvironmentHandler, Action
 
+EXPLORE = False
+
 
 def CheckTrainingDoneCallback(reward_array, done_array, env):
     done_cond = False
@@ -152,20 +154,20 @@ def main():
             obs = env.get_observation()
 
             # act
-            a = agent.process_step(obs, True)
-            if a == 0:
+            a = agent.process_step(obs, EXPLORE)
+            if a == Action.CWISE:
                 print("Right")
                 envhandler.take_action(Action.CWISE)
-            elif a == 1:
+            elif a == Action.CCWISE:
                 print("Left")
                 envhandler.take_action(Action.CCWISE)
-            elif a == 2:
+            elif a == Action.FORWARD:
                 print("Forward")
                 envhandler.take_action(Action.FORWARD)
-            elif a == 3:
+            elif a == Action.BREAK:
                 print("Break")
                 envhandler.take_action(Action.BREAK)
-            elif a == 4:
+            elif a == Action.CRAFT:
                 print("Craft")
                 envhandler.take_action(Action.CRAFT)
 

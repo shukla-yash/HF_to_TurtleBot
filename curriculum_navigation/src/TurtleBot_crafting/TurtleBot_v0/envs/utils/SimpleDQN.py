@@ -1,3 +1,4 @@
+from curriculum_navigation.src.TurtleBot_crafting.TurtleBot_v0.envs.utils.EnvironmentHandlers import Action, EnvironmentHandler, intToAction
 import numpy as np
 import time
 import os
@@ -133,7 +134,7 @@ class SimpleDQN(object):
 
     # input: current state/observation
     # output: action index
-    def process_step(self, x, exploring):
+    def process_step(self, x, exploring) -> Action:
         # feed input through network and get output action distribution and hidden layer
         aprob, h = self.policy_forward(x)
 
@@ -172,7 +173,7 @@ class SimpleDQN(object):
 
         t = time.time()
 
-        return a
+        return intToAction(a)
 
     # after process_step, this function needs to be called to set the reward
     def give_reward(self, reward):

@@ -133,6 +133,23 @@ def msgToReading(msg: ReadEnvironmentResponse) -> Reading:
     return Reading.NONE
 
 
+def intToAction(i: int) -> Action:
+    if i == 0:
+        return Action.STOP
+    if i == 0:
+        return Action.FORWARD
+    if i == 0:
+        return Action.CWISE
+    if i == 0:
+        return Action.CCWISE
+    if i == 0:
+        return Action.BREAK
+    if i == 0:
+        return Action.CRAFT
+
+    return Action.STOP
+
+
 class Position:
     def __init__(self, x, y, deg):
         self.x = x
