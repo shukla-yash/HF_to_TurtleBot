@@ -1,4 +1,4 @@
-from curriculum_navigation.src.TurtleBot_crafting.TurtleBot_v0.envs.utils.EnvironmentHandlers import Action, EnvironmentHandler, intToAction
+from curriculum_navigation.src.TurtleBot_crafting.TurtleBot_v0.envs.utils.EnvironmentHandlers import Action, intToAction
 import numpy as np
 import time
 import os
@@ -116,8 +116,6 @@ class SimpleDQN(object):
         dh = epdlogp.dot(self._model["W2"].T)
         dh[eph <= 0] = 0  # backpro prelu
 
-        t = time.time()
-
         if be == "gpu":
             self._dh_gpu = cuda.to_gpu(dh, device=0)
             self._epx_gpu = cuda.to_gpu(self._epx.T, device=0)
@@ -148,12 +146,12 @@ class SimpleDQN(object):
             # print(rand_e)
             if rand_e < self._explore_eps:
                 # set all actions to be equal probability
-                aprob[0] = [1.0 / len(aprob[0]) for i in range(len(aprob[0]))]
+                aprob[0] = [1.0 / len(aprob[0]) for _ in range(len(aprob[0]))]
                 # print("!")
 
         if np.isnan(np.sum(aprob)):
             print(aprob)
-            aprob[0] = [1.0 / len(aprob[0]) for i in range(len(aprob[0]))]
+            aprob[0] = [1.0 / len(aprob[0]) for _ in range(len(aprob[0]))]
             print(aprob)
             # input()
 
@@ -162,7 +160,6 @@ class SimpleDQN(object):
         a = np.where(u <= aprob_cum)[0][0]
 
         # record various intermediates (needed later for backprop)
-        t = time.time()
         self._xs.append(x)  # observation
         self._hs.append(h)
 
@@ -170,8 +167,6 @@ class SimpleDQN(object):
         dlogsoftmax = aprob.copy()
         dlogsoftmax[0, a] -= 1  # -discounted reward
         self._dlogps.append(dlogsoftmax)
-
-        t = time.time()
 
         return intToAction(a)
 
@@ -197,23 +192,10 @@ class SimpleDQN(object):
         # this needs to be stored to be used by policy_backward
         # self._xs is a list of vectors of size input dim and the number of vectors is equal to the number of time steps in the episode
         self._epx = np.vstack(self._xs)
-
-        # for i in range(0,len(self._hs)):
-        # 	print(self._hs[i])
-
-        # len(self._hs) = # time steps
         # stores hidden state activations
         eph = np.vstack(self._hs)
-
-        # for i in range(0,len(self._dlogps)):
-        # 	print(self._dlogps[i])
-
         # self._dlogps stores a history of the probabilities over actions selected by the agent
         epdlogp = np.vstack(self._dlogps)
-
-        # self._drs is the history of rewards
-        # for i in range(0,len(self._drs)):
-        # 	print(self._drs[i])
         epr = np.vstack(self._drs)
 
         self._xs, self._hs, self._dlogps, self._drs = (
@@ -225,25 +207,8 @@ class SimpleDQN(object):
 
         # compute the discounted reward backwards through time
         discounted_epr = self.discount_rewards(epr)
-        # for i in range(0,len(discounted_epr)):
-        # 	print(str(discounted_epr[i]) + "\t"+str(epr[i]))
-
-        # #print(discounted_epr)
-        # discounted_epr_mean = np.mean(discounted_epr)
-        # #print(discounted_epr_mean)
-
-        # # standardize the rewards to be unit normal (helps control the gradient estimator variance)
-
-        # #discounted_epr -= np.mean(discounted_epr)
-        # discounted_epr = np.subtract(discounted_epr,discounted_epr_mean)
-
-        # discounted_epr /= np.std(discounted_epr)+0.01
-
         epdlogp *= discounted_epr  # modulate the gradient with advantage (PG magic happens right here.)
-
-        start_time = time.time()
         grad = self.policy_backward(eph, epdlogp)
-        # print("--- %s seconds for policy backward ---" % (time.time() - start_time))
 
         for k in self._model:
             self._grad_buffer[k] += grad[k]  # accumulate grad over batch
