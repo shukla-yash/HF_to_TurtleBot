@@ -26,11 +26,13 @@ class TurtleBotV0Env(gym.Env):
         rosnode=True,
     ):
 
+        self.map_enable = False
         self.EnvController: EnvironmentHandler
         if rosnode:
             self.EnvController: EnvironmentHandler = RosEnvironmentHandler()
         else:
             self.EnvController: EnvironmentHandler = StandardEnvironmentHandler(self)
+            self.map_enable = True
 
         self.width = np.float64(map_width)
         self.height = np.float64(map_height)
@@ -89,7 +91,8 @@ class TurtleBotV0Env(gym.Env):
 
         self.x_pos = []
         self.y_pos = []
-        # self.map = np.zeros((int(self.width * 10), int(self.height * 10)))
+        if self.map_enable:
+            self.map = np.zeros((int(self.width * 10), int(self.height * 10)))
         self.rocks_broken = []
         self.trees_broken = []
 
@@ -98,17 +101,19 @@ class TurtleBotV0Env(gym.Env):
             # (Tree 1 will be at absolute location: -1.5 + 3*0.1 = -1.2)
             self.x_pos.append(-self.width / 2 + self.width * x_rand[i])
             self.y_pos.append(-self.height / 2 + self.height * y_rand[i])
-            # self.map[int(self.width * 10 * x_rand[i])][  # type: ignore (numpy stubs are incomplete)
-            #    int(self.height * 10 * y_rand[i])
-            # ] = 1
+            if self.map_enable:
+                self.map[int(self.width * 10 * x_rand[i])][  # type: ignore (numpy stubs are incomplete)
+                   int(self.height * 10 * y_rand[i])
+                ] = 1
 
         # Instantiate the rocks
         for i in range(self.n_rocks):
             self.x_pos.append(-self.width / 2 + self.width * x_rand[i + self.n_trees])
             self.y_pos.append(-self.height / 2 + self.height * y_rand[i + self.n_trees])
-            # self.map[int(self.width * 10 * x_rand[i + self.n_trees])][  # type: ignore (numpy stubs are incomplete)
-            #    int(self.height * 10 * y_rand[i + self.n_trees])
-            # ] = 2
+            if self.map_enable:
+                self.map[int(self.width * 10 * x_rand[i + self.n_trees])][  # type: ignore (numpy stubs are incomplete)
+                   int(self.height * 10 * y_rand[i + self.n_trees])
+                ] = 2
 
         for i in range(self.n_table):
             if (
@@ -125,7 +130,8 @@ class TurtleBotV0Env(gym.Env):
             ):
                 self.x_pos.append(self.width / 2 - 0.05)
                 self.y_pos.append(self.height / 2 - 0.05)
-                # self.map[int(self.width * 5)][int(self.height * 5)] = 3  # type: ignore (more numpy stuff)
+                if self.map_enable:
+                    self.map[int(self.width * 5)][int(self.height * 5)] = 3  # type: ignore (more numpy stuff)
             else:
                 self.x_pos.append(
                     -self.width / 2
@@ -135,9 +141,10 @@ class TurtleBotV0Env(gym.Env):
                     -self.height / 2
                     + self.height * y_rand[i + self.n_trees + self.n_rocks]
                 )
-                # self.map[
-                #    int(self.width * 10 * x_rand[i + self.n_trees + self.n_rocks])  # type: ignore
-                # ][int(self.height * 10 * y_rand[i + self.n_trees + self.n_rocks])] = 3
+                if self.map_enable:
+                    self.map[
+                       int(self.width * 10 * x_rand[i + self.n_trees + self.n_rocks])  # type: ignore
+                    ][int(self.height * 10 * y_rand[i + self.n_trees + self.n_rocks])] = 3
 
         self.inventory = dict(
             [("wood", self.starting_trees), ("stone", self.starting_rocks), ("pogo", 0)]
@@ -186,10 +193,11 @@ class TurtleBotV0Env(gym.Env):
         self.env_step_counter += 1
 
         obs = self.get_observation()
-        # a = int((self.agent_loc[0] + self.width  / 2) * 10)
-        # b = int((self.agent_loc[1] + self.height / 2) * 10)
-        # print('** ', a, ' ', b)
-        # self.map[a][b] = 567
+        if self.map_enable:
+            a = int((self.agent_loc[0] + self.width  / 2) * 10)
+            b = int((self.agent_loc[1] + self.height / 2) * 10)
+            print('** ', a, ' ', b)
+            self.map[a][b] = 567 # type: ignore
         return obs, reward, done, {}
 
     def get_observation(self):
