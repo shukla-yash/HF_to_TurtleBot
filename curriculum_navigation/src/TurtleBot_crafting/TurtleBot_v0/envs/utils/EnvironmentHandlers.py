@@ -1,4 +1,5 @@
 import abc
+from TurtleBot_v0.envs.utils.Rewards import Rewards
 import time
 import copy
 import numpy as np
@@ -158,8 +159,10 @@ class Position:
 
 
 class EnvironmentHandler(abc.ABC):
-    def __init__(self, calling_super):
-        self.calling_super = calling_super
+    def __init__(self, inventory, ):
+        self.inventory = inventory
+        self.trees_broken = []
+        self.rocks_broken = []
         self.agent_loc = None
         self.agent_orn = None
         self.additional_init()
@@ -194,23 +197,22 @@ class EnvironmentHandler(abc.ABC):
         if index_removed >= 0 and index_removed < 4:
             object_removed = 1
             print("Index Removed: ", index_removed)
-            time.sleep(5.0)
-            self.calling_super.inventory["wood"] += 1
-            if self.calling_super.inventory["wood"] <= 2:
-                reward = self.calling_super.reward_break
+            self.inventory["wood"] += 1
+            if self.inventory["wood"] <= 2:
+                reward = Rewards.REWARD_BREAK.value
         if index_removed > 3 and index_removed < 6:
             object_removed = 2
-            self.calling_super.rocks_broken.append(index_removed)
+            self.rocks_broken.append(index_removed)
             print("Index Removed: ", index_removed)
             time.sleep(5.0)
-            self.calling_super.inventory["stone"] += 1
-            if self.calling_super.inventory["stone"] <= 1:
-                reward = self.calling_super.reward_break
+            self.inventory["stone"] += 1
+            if self.inventory["stone"] <= 1:
+                reward = Rewards.REWARD_BREAK.value
 
         if object_removed == 1:
             flag = 0
-            for i in range(len(self.calling_super.trees_broken)):
-                if index_removed > self.calling_super.trees_broken[i]:
+            for i in range(len(self.trees_broken)):
+                if index_removed > self.trees_broken[i]:
                     flag += 1
             self.calling_super.x_pos.pop(index_removed - flag)
             self.calling_super.y_pos.pop(index_removed - flag)
@@ -225,10 +227,10 @@ class EnvironmentHandler(abc.ABC):
 
         if object_removed == 2:
             flag = 0
-            for i in range(len(self.calling_super.rocks_broken)):
-                if index_removed > self.calling_super.rocks_broken[i]:
+            for i in range(len(self.rocks_broken)):
+                if index_removed > self.rocks_broken[i]:
                     flag += 1
-            flag += len(self.calling_super.trees_broken)
+            flag += len(self.trees_broken)
             self.calling_super.x_pos.pop(index_removed - flag)
             self.calling_super.y_pos.pop(index_removed - flag)
             self.calling_super.x_low.pop(index_removed - flag)
@@ -247,14 +249,14 @@ class EnvironmentHandler(abc.ABC):
         done = False
         if index_removed == 7:
             if (
-                self.calling_super.inventory["wood"] >= 2
-                and self.calling_super.inventory["stone"] >= 1
+                self.inventory["wood"] >= 2
+                and self.inventory["stone"] >= 1
             ):
-                self.calling_super.inventory["pogo"] += 1
-                self.calling_super.inventory["wood"] -= 2
-                self.calling_super.inventory["stone"] -= 1
+                self.inventory["pogo"] += 1
+                self.inventory["wood"] -= 2
+                self.inventory["stone"] -= 1
                 done = True
-                reward = self.calling_super.reward_done
+                reward = Rewards.REWARD_DONE.value
 
         return (reward, done)
 
@@ -282,11 +284,11 @@ class RosEnvironmentHandler(EnvironmentHandler):
             self.node.goto_relative(req)
 
         if action == Action.BREAK:
-            reading = self.get_reading()
+            self.break_action()
             time.sleep(3)
 
         if action == Action.CRAFT:
-            reading = self.get_reading()
+            self.craft_action()
             time.sleep(3)
             done = True
 
@@ -312,7 +314,7 @@ class StandardEnvironmentHandler(EnvironmentHandler):
         basePos = copy.deepcopy(self.calling_super.agent_loc)
         baseOrn = copy.deepcopy(self.calling_super.agent_orn)
 
-        reward = self.calling_super.reward_step
+        reward = Rewards.REWARD_STEP.value
         done = False
 
         forward = 0
@@ -343,7 +345,7 @@ class StandardEnvironmentHandler(EnvironmentHandler):
             if (abs(abs(x_new) - abs(self.calling_super.width / 2)) < 0.25) or (
                 abs(abs(y_new) - abs(self.calling_super.height / 2)) < 0.25
             ):
-                reward = self.calling_super.reward_hit_wall
+                reward = Rewards.REWARD_HIT_WALL.value
                 forward = 0
 
             if forward == 1:
