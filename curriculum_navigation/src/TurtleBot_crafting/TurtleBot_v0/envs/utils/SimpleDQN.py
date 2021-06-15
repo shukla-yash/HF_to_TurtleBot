@@ -1,4 +1,4 @@
-from curriculum_navigation.src.TurtleBot_crafting.TurtleBot_v0.envs.utils.EnvironmentHandlers import Action, intToAction
+from TurtleBot_v0.envs.utils.EnvironmentHandlers import Action, intToAction
 import numpy as np
 import time
 import os
