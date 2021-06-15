@@ -10,7 +10,6 @@ from TurtleBot_v0.envs.utils.EnvironmentHandlers import (
     EnvironmentHandler,
     RosEnvironmentHandler,
     StandardEnvironmentHandler,
-    Action,
 )
 
 
@@ -29,7 +28,7 @@ class TurtleBotV0Env(gym.Env):
         self.map_enable = False
         self.EnvController: EnvironmentHandler
         if rosnode:
-            self.EnvController: EnvironmentHandler = RosEnvironmentHandler()
+            self.EnvController: EnvironmentHandler = RosEnvironmentHandler(self)
         else:
             self.EnvController: EnvironmentHandler = StandardEnvironmentHandler(self)
             self.map_enable = True

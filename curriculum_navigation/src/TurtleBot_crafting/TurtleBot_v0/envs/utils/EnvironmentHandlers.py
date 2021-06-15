@@ -158,8 +158,14 @@ class Position:
 
 
 class EnvironmentHandler(abc.ABC):
+    def __init__(self, calling_super):
+        self.calling_super = calling_super
+        self.agent_loc = None
+        self.agent_orn = None
+        self.additional_init()
+
     @abc.abstractmethod
-    def __init__(self):
+    def additional_init(self):
         self
         raise NotImplementedError
 
@@ -181,9 +187,80 @@ class EnvironmentHandler(abc.ABC):
         self
         raise NotImplementedError
 
+    def break_action(self):
+        object_removed = 0
+        index_removed = self.get_reading().value
+        reward = 0
+        if index_removed >= 0 and index_removed < 4:
+            object_removed = 1
+            print("Index Removed: ", index_removed)
+            time.sleep(5.0)
+            self.calling_super.inventory["wood"] += 1
+            if self.calling_super.inventory["wood"] <= 2:
+                reward = self.calling_super.reward_break
+        if index_removed > 3 and index_removed < 6:
+            object_removed = 2
+            self.calling_super.rocks_broken.append(index_removed)
+            print("Index Removed: ", index_removed)
+            time.sleep(5.0)
+            self.calling_super.inventory["stone"] += 1
+            if self.calling_super.inventory["stone"] <= 1:
+                reward = self.calling_super.reward_break
+
+        if object_removed == 1:
+            flag = 0
+            for i in range(len(self.calling_super.trees_broken)):
+                if index_removed > self.calling_super.trees_broken[i]:
+                    flag += 1
+            self.calling_super.x_pos.pop(index_removed - flag)
+            self.calling_super.y_pos.pop(index_removed - flag)
+            self.calling_super.x_low.pop(index_removed - flag)
+            self.calling_super.x_high.pop(index_removed - flag)
+            self.calling_super.y_low.pop(index_removed - flag)
+            self.calling_super.y_high.pop(index_removed - flag)
+            self.calling_super.n_trees -= 1
+            self.calling_super.trees_broken.append(index_removed)
+            print("Object Broken:", object_removed)
+            print("Index Broken:", index_removed)
+
+        if object_removed == 2:
+            flag = 0
+            for i in range(len(self.calling_super.rocks_broken)):
+                if index_removed > self.calling_super.rocks_broken[i]:
+                    flag += 1
+            flag += len(self.calling_super.trees_broken)
+            self.calling_super.x_pos.pop(index_removed - flag)
+            self.calling_super.y_pos.pop(index_removed - flag)
+            self.calling_super.x_low.pop(index_removed - flag)
+            self.calling_super.x_high.pop(index_removed - flag)
+            self.calling_super.y_low.pop(index_removed - flag)
+            self.calling_super.y_high.pop(index_removed - flag)
+            self.calling_super.n_rocks -= 1
+            print("Object Broken:", object_removed)
+            print("Index Broken:", index_removed)
+
+        return (reward, False) # just taking an action, can never be done in this case
+
+    def craft_action(self):
+        index_removed = self.get_reading().value
+        reward = 0
+        done = False
+        if index_removed == 7:
+            if (
+                self.calling_super.inventory["wood"] >= 2
+                and self.calling_super.inventory["stone"] >= 1
+            ):
+                self.calling_super.inventory["pogo"] += 1
+                self.calling_super.inventory["wood"] -= 2
+                self.calling_super.inventory["stone"] -= 1
+                done = True
+                reward = self.calling_super.reward_done
+
+        return (reward, done)
+
 
 class RosEnvironmentHandler(EnvironmentHandler):
-    def __init__(self):
+    def additional_init(self):
         self.node = TurtleBotRosNode()
 
     def take_action(
@@ -228,10 +305,8 @@ class RosEnvironmentHandler(EnvironmentHandler):
 
 
 class StandardEnvironmentHandler(EnvironmentHandler):
-    def __init__(self, calling_super):
-        self.calling_super = calling_super
-        self.agent_loc = None
-        self.agent_orn = None
+    def additional_init(self):
+        pass
 
     def take_action(self, action: Action):
         basePos = copy.deepcopy(self.calling_super.agent_loc)
@@ -241,8 +316,6 @@ class StandardEnvironmentHandler(EnvironmentHandler):
         done = False
 
         forward = 0
-        object_removed = 0
-        index_removed = 0
 
         self.calling_super.map[int((self.calling_super.agent_loc[0] + self.calling_super.width / 2) * 10)][  # type: ignore
             int((self.calling_super.agent_loc[1] + self.calling_super.height / 2) * 10)
@@ -280,69 +353,12 @@ class StandardEnvironmentHandler(EnvironmentHandler):
         elif action == 3:  # Break
             self.x = basePos[0]
             self.y = basePos[1]
-            index_removed = self.get_reading().value
-            if index_removed >= 0 and index_removed < 4:
-                object_removed = 1
-                print("Index Removed: ", index_removed)
-                time.sleep(5.0)
-                self.calling_super.inventory["wood"] += 1
-                if self.calling_super.inventory["wood"] <= 2:
-                    reward = self.calling_super.reward_break
-            if index_removed > 3 and index_removed < 6:
-                object_removed = 2
-                self.calling_super.rocks_broken.append(index_removed)
-                print("Index Removed: ", index_removed)
-                time.sleep(5.0)
-                self.calling_super.inventory["stone"] += 1
-                if self.calling_super.inventory["stone"] <= 1:
-                    reward = self.calling_super.reward_break
-
-            if object_removed == 1:
-                flag = 0
-                for i in range(len(self.calling_super.trees_broken)):
-                    if index_removed > self.calling_super.trees_broken[i]:
-                        flag += 1
-                self.calling_super.x_pos.pop(index_removed - flag)
-                self.calling_super.y_pos.pop(index_removed - flag)
-                self.calling_super.x_low.pop(index_removed - flag)
-                self.calling_super.x_high.pop(index_removed - flag)
-                self.calling_super.y_low.pop(index_removed - flag)
-                self.calling_super.y_high.pop(index_removed - flag)
-                self.calling_super.n_trees -= 1
-                self.calling_super.trees_broken.append(index_removed)
-                print("Object Broken:", object_removed)
-                print("Index Broken:", index_removed)
-
-            if object_removed == 2:
-                flag = 0
-                for i in range(len(self.calling_super.rocks_broken)):
-                    if index_removed > self.calling_super.rocks_broken[i]:
-                        flag += 1
-                flag += len(self.calling_super.trees_broken)
-                self.calling_super.x_pos.pop(index_removed - flag)
-                self.calling_super.y_pos.pop(index_removed - flag)
-                self.calling_super.x_low.pop(index_removed - flag)
-                self.calling_super.x_high.pop(index_removed - flag)
-                self.calling_super.y_low.pop(index_removed - flag)
-                self.calling_super.y_high.pop(index_removed - flag)
-                self.calling_super.n_rocks -= 1
-                print("Object Broken:", object_removed)
-                print("Index Broken:", index_removed)
+            self.break_action()
 
         elif action == 4:  # Craft
             self.x = basePos[0]
             self.y = basePos[1]
-            index_removed = self.get_reading().value
-            if index_removed == 7:
-                if (
-                    self.calling_super.inventory["wood"] >= 2
-                    and self.calling_super.inventory["stone"] >= 1
-                ):
-                    self.calling_super.inventory["pogo"] += 1
-                    self.calling_super.inventory["wood"] -= 2
-                    self.calling_super.inventory["stone"] -= 1
-                    done = True
-                    reward = self.calling_super.reward_done
+            reward, done = self.craft_action()
 
         return reward, done
 
