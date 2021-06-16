@@ -9,11 +9,27 @@ import TurtleBot_v0
 from SimpleDQN import SimpleDQN
 import rospy
 from geometry_msgs.msg import Twist
-from movement_utils.srv import *
+
+from movement_utils.srv import (
+    ResetOdom,
+    ResetOdomRequest,
+    ResetOdomResponse,
+    GetPosition,
+    GetPositionRequest,
+    GetPositionResponse,
+    GoToRelative,
+    GoToRelativeRequest,
+    GoToRelativeResponse,
+)
+
+from qr_state_reader.srv import (
+    ReadEnvironment,
+    ReadEnvironmentRequest,
+    ReadEnvironmentResponse,
+)
 
 
 def CheckTrainingDoneCallback(reward_array, done_array, env):
-
     done_cond = False
     reward_cond = False
     if len(done_array) > 40:
@@ -35,6 +51,99 @@ def CheckTrainingDoneCallback(reward_array, done_array, env):
             return 0
     else:
         return 0
+
+
+class TurtleBotRosNode(object):
+    def __init__(self, timeout_seconds=15):
+        rospy.init_node("TurtleBotCurriculumNav", anonymous=False)
+        rospy.on_shutdown(self.shutdown)
+        rospy.loginfo("Starting up turtlebot ROS node.")
+
+        srv_str_get_position = "/movement_wrapper/get_position"
+        srv_str_goto_relative = "/movement_wrapper/goto_relative"
+        srv_str_reset_odom = "/movement_wrapper/reset_odom"
+        srv_str_read_env = "/qr_state_reader/read_environment"
+
+        try:
+            rospy.loginfo("Attempting to connect to movement wrapper services.")
+            rospy.wait_for_service(srv_str_get_position, timeout=timeout_seconds)
+            self.service_get_position = rospy.ServiceProxy(
+                srv_str_get_position, GetPosition
+            )
+            self.service_goto_position = rospy.ServiceProxy(
+                srv_str_goto_relative, GoToRelative
+            )
+            self.service_reset_odom = rospy.ServiceProxy(srv_str_reset_odom, ResetOdom)
+        except rospy.ROSException:
+            rospy.logerr(
+                "Tried accessing a movement_wrapper service but failed. Exiting."
+            )
+            sys.exit(1)
+        rospy.loginfo("Connected to movement wrapper services successfully.")
+
+        try:
+            rospy.loginfo("Attempting to connect to qr service.")
+            rospy.wait_for_service(srv_str_read_env, timeout=timeout_seconds)
+            self.service_read_env = rospy.ServiceProxy(
+                srv_str_read_env, ReadEnvironment
+            )
+        except rospy.ROSException:
+            rospy.logerr(
+                "Tried accessing the qr_state_reader service but failed. Exiting."
+            )
+            sys.exit(1)
+        rospy.loginfo("Connected to qr service successfully. Ready to go!")
+
+        self.reset_odom()
+
+    def __del__(self):
+        self.service_get_position.close()
+        self.service_goto_position.close()
+        self.service_reset_odom.close()
+        self.service_read_env.close()
+
+    def shutdown(self):
+        self.halt()
+        del self
+
+    def get_position(self) -> GetPositionResponse:
+        try:
+            req = GetPositionRequest()
+            return self.service_get_position(req)
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+            return GetPositionResponse()
+
+    def goto_relative(self, req: GoToRelativeRequest) -> GoToRelativeResponse:
+        resp = GoToRelativeResponse()
+        try:
+            resp = self.service_goto_position(req)
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+
+        return resp
+
+    def halt(self):
+        req = GoToRelativeRequest()
+        req.movement = req.STOP
+        self.goto_relative(req)
+
+    def reset_odom(self) -> ResetOdomResponse:
+        try:
+            req = ResetOdomRequest()
+            self.service_reset_odom(req)
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+
+        return ResetOdomResponse()
+
+    def read_environment(self) -> ReadEnvironmentResponse:
+        try:
+            req = ReadEnvironmentRequest()
+            return self.service_read_env(req)
+        except rospy.ServiceException as e:
+            rospy.logerr("Service call failed:" + str(e))
+            return ReadEnvironmentResponse()
 
 
 class GoForward:

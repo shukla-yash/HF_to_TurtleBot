@@ -181,7 +181,6 @@ class TurtleBotV0Env(gym.Env):
             print("Service call failed: %s" % e)
 
     def step(self, action):
-
         basePos = copy.deepcopy(self.agent_loc)
         baseOrn = copy.deepcopy(self.agent_orn)
 
