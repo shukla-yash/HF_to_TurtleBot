@@ -1,5 +1,6 @@
 #!/usr/bin/env python3.7
 
+from enum import Enum
 import os
 import sys
 import gym
@@ -51,6 +52,15 @@ def CheckTrainingDoneCallback(reward_array, done_array, env):
             return 0
     else:
         return 0
+
+
+class Action(Enum):
+    STOP = 0
+    FORWARD = 1
+    CWISE = 2
+    CCWISE = 3
+    BREAK = 4
+    CRAFT = 5
 
 
 class TurtleBotRosNode(object):
@@ -123,6 +133,22 @@ class TurtleBotRosNode(object):
 
         return resp
 
+    def act(self, action: Action):
+        req = GoToRelativeRequest()
+        if action == Action.STOP:
+            req.movement = req.STOP
+        if action == Action.CWISE:
+            req.movement = req.CWISE
+        if action == Action.CCWISE:
+            req.movement = req.CCWISE
+        if action == Action.FORWARD:
+            req.movement = req.FORWARD
+        if action == Action.CRAFT:
+            time.sleep(2)
+        if action == Action.BREAK:
+            time.sleep(2)
+        self.goto_relative(req)
+
     def halt(self):
         req = GoToRelativeRequest()
         req.movement = req.STOP
@@ -146,46 +172,8 @@ class TurtleBotRosNode(object):
             return ReadEnvironmentResponse()
 
 
-class GoForward:
-    def __init__(self, action):
-        # initiliaze
-        rospy.init_node("GoForward", anonymous=False)
-
-        # What function to call when you ctrl + c
-        rospy.on_shutdown(self.shutdown)
-
-        # Create a publisher which can "talk" to TurtleBot and tell it to move
-        # Tip: You may need to change cmd_vel_mux/input/navi to /cmd_vel if you're not using TurtleBot2
-        self.cmd_vel = rospy.Publisher("cmd_vel_mux/input/navi", Twist, queue_size=10)
-
-        # TurtleBot will stop if we don't keep telling it to move.  How often should we tell it to move? 10 HZ
-        r = rospy.Rate(10)
-
-        # Twist is a datatype for velocity
-        move_cmd = Twist()
-        if action == 2:
-            move_cmd.linear.x = 0.2
-            move_cmd.angular.z = 0
-        elif action == 1:
-            move_cmd.linear.x = 0
-            move_cmd.angular.z = -0.35
-        elif action == 0:
-            move_cmd.linear.x = 0
-            move_cmd.angular.z = 0.35
-
-        for j in range(1):
-            for i in range(10):
-                self.cmd_vel.publish(move_cmd)
-                r.sleep()
-
-    def shutdown(self):
-        # stop turtlebot
-        rospy.loginfo("Stop TurtleBot")
-        self.cmd_vel.publish(Twist())
-
-
-if __name__ == "__main__":
-
+def main():
+    RosEnv = None
     no_of_environmets = 4
 
     width_array = [1.5, 2.5, 3, 3]
@@ -297,6 +285,9 @@ if __name__ == "__main__":
         env_flag = 0
 
         env.reset()
+        if RosEnv is not None:
+            del RosEnv
+        RosEnv = TurtleBotRosNode()
 
         while True:
 
@@ -307,13 +298,13 @@ if __name__ == "__main__":
             a = agent.process_step(obs, True)
             if a == 0:
                 print("Right")
-                GoForward(0)
+                RosEnv.act(Action.CWISE)
             elif a == 1:
                 print("Left")
-                GoForward(1)
+                RosEnv.act(Action.CCWISE)
             elif a == 2:
                 print("Forward")
-                GoForward(2)
+                RosEnv.act(Action.CWISE)
             elif a == 3:
                 print("Break")
             elif a == 4:
@@ -375,3 +366,7 @@ if __name__ == "__main__":
 
                     break
     print("done")
+
+
+if __name__ == "__main__":
+    main()
