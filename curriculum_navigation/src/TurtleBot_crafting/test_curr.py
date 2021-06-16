@@ -68,7 +68,7 @@ def main():
     action_space = ["W", "A", "D", "U", "C"]
     total_episodes_arr = []
 
-    for k in range(1):
+    for _ in range(1):
         i = 3
         print("Environment: ", i)
 
@@ -149,27 +149,30 @@ def main():
 
         envhandler = RosEnvironmentHandler()
         while True:
+            print("Step: ", end="")
 
             # get obseration from sensor
             obs = env.get_observation()
 
             # act
             a = agent.process_step(obs, EXPLORE)
-            if a == Action.CWISE:
-                print("Right")
-                envhandler.take_action(Action.CWISE)
-            elif a == Action.CCWISE:
-                print("Left")
-                envhandler.take_action(Action.CCWISE)
-            elif a == Action.FORWARD:
-                print("Forward")
-                envhandler.take_action(Action.FORWARD)
-            elif a == Action.BREAK:
-                print("Break")
-                envhandler.take_action(Action.BREAK)
-            elif a == Action.CRAFT:
-                print("Craft")
-                envhandler.take_action(Action.CRAFT)
+            print(a)
+            env.step(a)
+#            if a == Action.CWISE:
+#                print("Right")
+#                envhandler.take_action(Action.CWISE)
+#            elif a == Action.CCWISE:
+#                print("Left")
+#                envhandler.take_action(Action.CCWISE)
+#            elif a == Action.FORWARD:
+#                print("Forward")
+#                envhandler.take_action(Action.FORWARD)
+#            elif a == Action.BREAK:
+#                print("Break")
+#                envhandler.take_action(Action.BREAK)
+#            elif a == Action.CRAFT:
+#                print("Craft")
+#                envhandler.take_action(Action.CRAFT)
 
             new_obs, reward, done, info = env.step(a)
 

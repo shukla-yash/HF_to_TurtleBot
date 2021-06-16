@@ -243,7 +243,12 @@ class SimpleDQN(object):
 
         path_to_load = (
             ""
-            + os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'+os.sep+'..'+os.sep+'..'))
+            + os.path.abspath(
+                os.path.join(
+                    os.path.dirname(os.path.abspath(__file__)),
+                    ".." + os.sep + ".." + os.sep + "..",
+                )
+            )
             + os.sep
             + self.log_dir
             + os.sep

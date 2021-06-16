@@ -20,6 +20,7 @@ import sys
 class TurtleBotRosNode(object):
     def __init__(self, timeout_seconds=15):
         rospy.init_node("TurtleBotCurriculumNav", anonymous=False)
+        rospy.loginfo("Starting up turtlebot ROS node.")
 
         srv_str_get_position = "/movement_wrapper/get_position"
         srv_str_goto_relative = "/movement_wrapper/goto_relative"
@@ -27,6 +28,7 @@ class TurtleBotRosNode(object):
         srv_str_read_env = "/qr_state_reader/read_environment"
 
         try:
+            rospy.loginfo("Attempting to connect to movement wrapper services.")
             rospy.wait_for_service(srv_str_get_position, timeout=timeout_seconds)
             self.service_get_position = rospy.ServiceProxy(
                 srv_str_get_position, GetPosition
@@ -40,8 +42,10 @@ class TurtleBotRosNode(object):
                 "Tried accessing a movement_wrapper service but failed. Exiting."
             )
             sys.exit(1)
+        rospy.loginfo("Connected to movement wrapper services successfully.")
 
         try:
+            rospy.loginfo("Attempting to connect to qr service.")
             rospy.wait_for_service(srv_str_read_env, timeout=timeout_seconds)
             self.service_read_env = rospy.ServiceProxy(
                 srv_str_read_env, ReadEnvironment
@@ -51,6 +55,7 @@ class TurtleBotRosNode(object):
                 "Tried accessing the qr_state_reader service but failed. Exiting."
             )
             sys.exit(1)
+        rospy.loginfo("Connected to qr service successfully. Ready to go!")
 
         self.reset_odom()
 
@@ -134,18 +139,19 @@ def msgToReading(msg: ReadEnvironmentResponse) -> Reading:
     return Reading.NONE
 
 
-def intToAction(i: int) -> Action:
+def intToAction(i:int) -> Action:
+    i = round(i) # just making sure we're an int int and not a float/np.int
     if i == 0:
         return Action.STOP
-    if i == 0:
+    if i == 1:
         return Action.FORWARD
-    if i == 0:
+    if i == 2:
         return Action.CWISE
-    if i == 0:
+    if i == 3:
         return Action.CCWISE
-    if i == 0:
+    if i == 4:
         return Action.BREAK
-    if i == 0:
+    if i == 5:
         return Action.CRAFT
 
     return Action.STOP
@@ -159,8 +165,12 @@ class Position:
 
 
 class EnvironmentHandler(abc.ABC):
-    def __init__(self, inventory, ):
-        self.inventory = inventory
+    def __init__(self):
+        self.inventory = {
+            "wood": 0,
+            "stone": 0,
+            "pogo": 0,
+        }
         self.trees_broken = []
         self.rocks_broken = []
         self.agent_loc = None
@@ -209,49 +219,46 @@ class EnvironmentHandler(abc.ABC):
             if self.inventory["stone"] <= 1:
                 reward = Rewards.REWARD_BREAK.value
 
-        if object_removed == 1:
-            flag = 0
-            for i in range(len(self.trees_broken)):
-                if index_removed > self.trees_broken[i]:
-                    flag += 1
-            self.calling_super.x_pos.pop(index_removed - flag)
-            self.calling_super.y_pos.pop(index_removed - flag)
-            self.calling_super.x_low.pop(index_removed - flag)
-            self.calling_super.x_high.pop(index_removed - flag)
-            self.calling_super.y_low.pop(index_removed - flag)
-            self.calling_super.y_high.pop(index_removed - flag)
-            self.calling_super.n_trees -= 1
-            self.calling_super.trees_broken.append(index_removed)
-            print("Object Broken:", object_removed)
-            print("Index Broken:", index_removed)
+        #        if object_removed == 1:
+        #            flag = 0
+        #            for i in range(len(self.trees_broken)):
+        #                if index_removed > self.trees_broken[i]:
+        #                    flag += 1
+        #            self.calling_super.x_pos.pop(index_removed - flag)
+        #            self.calling_super.y_pos.pop(index_removed - flag)
+        #            self.calling_super.x_low.pop(index_removed - flag)
+        #            self.calling_super.x_high.pop(index_removed - flag)
+        #            self.calling_super.y_low.pop(index_removed - flag)
+        #            self.calling_super.y_high.pop(index_removed - flag)
+        #            self.calling_super.n_trees -= 1
+        #            self.calling_super.trees_broken.append(index_removed)
+        #            print("Object Broken:", object_removed)
+        #            print("Index Broken:", index_removed)
+        #
+        #        if object_removed == 2:
+        #            flag = 0
+        #            for i in range(len(self.rocks_broken)):
+        #                if index_removed > self.rocks_broken[i]:
+        #                    flag += 1
+        #            flag += len(self.trees_broken)
+        #            self.calling_super.x_pos.pop(index_removed - flag)
+        #            self.calling_super.y_pos.pop(index_removed - flag)
+        #            self.calling_super.x_low.pop(index_removed - flag)
+        #            self.calling_super.x_high.pop(index_removed - flag)
+        #            self.calling_super.y_low.pop(index_removed - flag)
+        #            self.calling_super.y_high.pop(index_removed - flag)
+        #            self.calling_super.n_rocks -= 1
+        #            print("Object Broken:", object_removed)
+        #            print("Index Broken:", index_removed)
 
-        if object_removed == 2:
-            flag = 0
-            for i in range(len(self.rocks_broken)):
-                if index_removed > self.rocks_broken[i]:
-                    flag += 1
-            flag += len(self.trees_broken)
-            self.calling_super.x_pos.pop(index_removed - flag)
-            self.calling_super.y_pos.pop(index_removed - flag)
-            self.calling_super.x_low.pop(index_removed - flag)
-            self.calling_super.x_high.pop(index_removed - flag)
-            self.calling_super.y_low.pop(index_removed - flag)
-            self.calling_super.y_high.pop(index_removed - flag)
-            self.calling_super.n_rocks -= 1
-            print("Object Broken:", object_removed)
-            print("Index Broken:", index_removed)
-
-        return (reward, False) # just taking an action, can never be done in this case
+        return (reward, False)  # just taking an action, can never be done in this case
 
     def craft_action(self):
         index_removed = self.get_reading().value
         reward = 0
         done = False
         if index_removed == 7:
-            if (
-                self.inventory["wood"] >= 2
-                and self.inventory["stone"] >= 1
-            ):
+            if self.inventory["wood"] >= 2 and self.inventory["stone"] >= 1:
                 self.inventory["pogo"] += 1
                 self.inventory["wood"] -= 2
                 self.inventory["stone"] -= 1

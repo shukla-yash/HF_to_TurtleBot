@@ -28,9 +28,9 @@ class TurtleBotV0Env(gym.Env):
         self.map_enable = False
         self.EnvController: EnvironmentHandler
         if rosnode:
-            self.EnvController: EnvironmentHandler = RosEnvironmentHandler(self)
+            self.EnvController: EnvironmentHandler = RosEnvironmentHandler()
         else:
-            self.EnvController: EnvironmentHandler = StandardEnvironmentHandler(self)
+            self.EnvController: EnvironmentHandler = StandardEnvironmentHandler()
             self.map_enable = True
 
         self.width = np.float64(map_width)
