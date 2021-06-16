@@ -172,9 +172,10 @@ class TurtleBotV0Env(gym.Env):
         return obs
 
     def qr_reading_callback(self):
-        rospy.wait_for_service("read_environment")
+        qr_state_reader_string = "/qr_state_reader/read_environment"
+        rospy.wait_for_service(qr_state_reader_string, timeout=15)
         try:
-            read_env_func = rospy.ServiceProxy("read_environment", ReadEnvironment)
+            read_env_func = rospy.ServiceProxy(qr_state_reader_string, ReadEnvironment)
             resp1 = read_env_func()
             return resp1.reading
         except rospy.ServiceException as e:
