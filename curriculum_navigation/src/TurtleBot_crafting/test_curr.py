@@ -304,7 +304,7 @@ def main():
                 RosEnv.act(Action.CCWISE)
             elif a == 2:
                 print("Forward")
-                RosEnv.act(Action.CWISE)
+                RosEnv.act(Action.FORWARD)
             elif a == 3:
                 print("Break")
             elif a == 4:
