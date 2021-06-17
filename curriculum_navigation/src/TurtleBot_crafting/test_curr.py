@@ -295,20 +295,21 @@ def main():
             obs = env.get_observation()
 
             # act
-            a = agent.process_step(obs, True)
+            a = agent.process_step(obs, False)
             if a == 0:
-                print("Right")
+                print(t_step, "Right")
                 RosEnv.act(Action.CWISE)
             elif a == 1:
-                print("Left")
+                print(t_step, "Left")
                 RosEnv.act(Action.CCWISE)
             elif a == 2:
-                print("Forward")
+                print(t_step, "Forward")
                 RosEnv.act(Action.FORWARD)
             elif a == 3:
-                print("Break")
+                print(t_step, "Break")
+                time.sleep(3)
             elif a == 4:
-                print("Craft")
+                print(t_step, "Craft")
 
             new_obs, reward, done, info = env.step(a)
 
@@ -348,8 +349,8 @@ def main():
                 agent.finish_episode()
 
                 # update after every episode
-                if episode % 10 == 0:
-                    agent.update_parameters()
+#                if episode % 10 == 0:
+#                    agent.update_parameters()
 
                 # reset environment
                 episode += 1
